@@ -11,4 +11,4 @@ services:
     ports:
       - "8002:8000"
     environment:
-      - EPG_UPDATE_INTERVAL=172800  # Environment variable for EPG update interval
+      - EPG_UPDATE_INTERVAL=172800
