@@ -1,10 +1,10 @@
 import requests
 import json
-import asyncio
-from datetime import datetime, timedelta, timezone
-from flask import Flask, send_file
 import threading
 import time
+from datetime import datetime, timedelta, timezone
+from flask import Flask, send_file
+import os
 
 app = Flask(__name__)
 
@@ -16,28 +16,23 @@ def fetch_epg(date_str):
     all_epg = []
     page = 0  # Start with the first page
     while True:
-        # Request parameters
         params = {
             "date": date_str,
             "languageFilters": "",
             "genreFilters": "",
             "limit": limit,
-            "offset": page * limit  # Offset is calculated based on page
+            "offset": page * limit
         }
-
         try:
-            # Fetch data
             response = requests.get(url, params=params)
-            response.raise_for_status()  # Raise an error for HTTP issues
+            response.raise_for_status()
             data = response.json().get("data", {})
 
             if not data:
-                print(f"No data found for date: {date_str}")
                 return []
 
             channels_data = data.get("channelList", [])
 
-            # Extract EPG data for each channel
             for channel in channels_data:
                 epg_data = [
                     {
@@ -49,7 +44,6 @@ def fetch_epg(date_str):
                     }
                     for epg in channel.get("epg", [])
                 ]
-
                 if epg_data:
                     all_epg.append({
                         "date": date_str,
@@ -58,11 +52,9 @@ def fetch_epg(date_str):
                         "epg": epg_data
                     })
 
-            # Break if we have reached the last page
             if data.get("offset", 0) + data.get("limit", 0) >= data.get("total", 0):
                 break
 
-            # Move to the next page
             page += 1
         except requests.RequestException as e:
             print(f"Request failed for date {date_str}: {e}")
@@ -74,7 +66,7 @@ def update_epg():
     """Fetch and save EPG data every 2 days."""
     while True:
         all_epg = []
-        for i in range(3):  # Get EPG for today and the next two days
+        for i in range(3):  # Get EPG for today and next two days
             date_str = (datetime.now(timezone.utc) + timedelta(days=i)).strftime("%d-%m-%Y")
             all_epg.extend(fetch_epg(date_str))
 
@@ -84,18 +76,15 @@ def update_epg():
 
         time.sleep(172800)  # Wait for 2 days (172800 seconds)
 
-
-
 @app.route('/')
 def hello():
     return 'Hello world with Flask'
+
 @app.route("/download_epg", methods=["GET"])
 def download_epg():
     """API to download the EPG JSON file."""
     return send_file("epg.json", mimetype="application/json", as_attachment=True, download_name="epg.json")
 
 if __name__ == "__main__":
-    # Run EPG updater in a separate thread
     threading.Thread(target=update_epg, daemon=True).start()
-    app.run(host="0.0.0.0", port=8000, debug=True)
-
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)), debug=True)
