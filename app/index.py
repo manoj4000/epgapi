@@ -84,6 +84,11 @@ def update_epg():
 
         time.sleep(172800)  # Wait for 2 days (172800 seconds)
 
+
+
+@app.route('/')
+def hello():
+    return 'Hello world with Flask'
 @app.route("/download_epg", methods=["GET"])
 def download_epg():
     """API to download the EPG JSON file."""
