@@ -8,13 +8,17 @@ import os
 
 app = Flask(__name__)
 
-# Base URL
+# Base URL for fetching EPG
 url = "https://tm.tapi.videoready.tv/portal-search/pub/api/v1/channels/schedule"
 limit = 20  # Number of items per page
 
 def fetch_epg(date_str):
+    """Fetch EPG data for a given date."""
     all_epg = []
     page = 0  # Start with the first page
+    
+    print(f"Fetching EPG data for {date_str}...")  # Log fetch start
+    
     while True:
         params = {
             "date": date_str,
@@ -29,6 +33,7 @@ def fetch_epg(date_str):
             data = response.json().get("data", {})
 
             if not data:
+                print(f"No data found for {date_str}")
                 return []
 
             channels_data = data.get("channelList", [])
@@ -57,23 +62,33 @@ def fetch_epg(date_str):
 
             page += 1
         except requests.RequestException as e:
-            print(f"Request failed for date {date_str}: {e}")
+            print(f"❌ Error fetching EPG for {date_str}: {e}")
             return []
 
+    print(f"✅ Done fetching EPG for {date_str} ({len(all_epg)} channels processed)")  # Log success
     return all_epg
 
 def update_epg():
     """Fetch and save EPG data every 2 days."""
     while True:
         all_epg = []
-        for i in range(3):  # Get EPG for today and next two days
+        days = 3  # Get EPG for today and next two days
+        print(f"🔄 Starting EPG fetch for {days} days...")
+
+        for i in range(days):
             date_str = (datetime.now(timezone.utc) + timedelta(days=i)).strftime("%d-%m-%Y")
-            all_epg.extend(fetch_epg(date_str))
+            fetched_data = fetch_epg(date_str)
+            all_epg.extend(fetched_data)
 
-        with open("epg.json", "w") as json_file:
-            json.dump(all_epg, json_file, indent=4)
-        print("EPG data for the next 2 days saved to epg.json")
+        if all_epg:
+            with open("epg.json", "w") as json_file:
+                json.dump(all_epg, json_file, indent=4)
+            print(f"✅ EPG data saved for {days} days! ({len(all_epg)} total entries)")
 
+        else:
+            print("❌ EPG fetch failed, no data saved!")
+
+        print("⏳ Sleeping for 2 days before the next update...")
         time.sleep(172800)  # Wait for 2 days (172800 seconds)
 
 @app.route('/')
