@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 import json
 import os
-from epg_script import fetch_epg_for_days
+from epg import fetch_epg_for_days
 
 app = Flask(__name__)
 
